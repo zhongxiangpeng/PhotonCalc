@@ -1,0 +1,27 @@
+# ==== 签名密钥与密码(严禁上传)====
+keystore/
+keystore.properties
+*.jks
+*.keystore
+
+# ==== 本机环境(各自生成)====
+local.properties
+.gradle-home/
+
+# ==== 构建产物 ====
+build/
+app/build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# ==== IDE ====
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ==== 临时/工具产物 ====
+downloads/
+*.log

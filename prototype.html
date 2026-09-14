@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>微波光子计算器 · 交互原型</title>
+<style>
+  :root {
+    --bg: #e8ebf1; --screen: #f8f9fc; --card: #ffffff; --border: #dde1e9;
+    --primary: #005fae; --primary-soft: #d4e3ff; --on-primary: #ffffff;
+    --text: #191c20; --text2: #5b616b; --chipbg: #eef1f6; --chipborder: #c9cfd9;
+    --error: #b3261e;
+  }
+  body.dark {
+    --bg: #05070a; --screen: #111418; --card: #1a1e24; --border: #2c313a;
+    --primary: #a3c9ff; --primary-soft: #1d3a5f; --on-primary: #00244d;
+    --text: #e1e2e8; --text2: #9aa0ab; --chipbg: #232830; --chipborder: #3a4150;
+    --error: #ffb4ab;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color: var(--text); min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
+    padding: 28px 16px; gap: 28px;
+  }
+  .proto-header h1 { font-size: 20px; margin: 0 0 4px; }
+  .proto-header p { font-size: 13px; color: var(--text2); margin: 0 0 14px; max-width: 300px; line-height: 1.6; }
+  .proto-notes { max-width: 300px; font-size: 13px; line-height: 1.9; color: var(--text2);
+    border-left: 3px solid var(--primary); padding-left: 14px; }
+  .proto-notes b { color: var(--text); }
+  #themeBtn {
+    background: var(--primary); color: var(--on-primary); border: none; border-radius: 999px;
+    padding: 9px 18px; font-size: 13px; cursor: pointer; margin-bottom: 14px;
+  }
+  .phone {
+    width: 392px; height: min(838px, calc(100vh - 56px)); min-height: 620px;
+    background: #101013; border-radius: 40px; padding: 10px; box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    flex: none;
+  }
+  .screen-wrap {
+    background: var(--screen); border-radius: 32px; height: 100%; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .statusbar {
+    display: flex; justify-content: space-between; padding: 10px 22px 2px;
+    font-size: 12px; font-weight: 600; color: var(--text);
+  }
+  .appbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 10px; }
+  .appbar .title { font-size: 19px; font-weight: 700; }
+  .theme-mini {
+    border: 1px solid var(--chipborder); background: var(--chipbg); color: var(--text2);
+    border-radius: 999px; font-size: 11px; padding: 4px 10px; cursor: pointer; font-family: inherit;
+  }
+  .screen { flex: 1; overflow-y: auto; padding: 2px 14px 16px; scroll-behavior: smooth; }
+  .screen::-webkit-scrollbar { width: 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 14px; margin-bottom: 12px;
+  }
+  .card h3 { margin: 0 0 10px; font-size: 14px; color: var(--primary); font-weight: 700; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .inputwrap { display: flex; align-items: center; border: 1px solid var(--chipborder); border-radius: 12px; overflow: hidden; }
+  .inputwrap:focus-within { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .inputwrap input {
+    flex: 1; border: none; outline: none; background: transparent; color: var(--text);
+    font-size: 16px; padding: 11px 12px; min-width: 0; font-family: inherit;
+  }
+  .inputwrap .unit { font-size: 14px; color: var(--text2); padding-right: 12px; white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 6px 0 2px; }
+  .chip {
+    border: 1px solid var(--chipborder); background: var(--chipbg); color: var(--text);
+    border-radius: 999px; padding: 7px 13px; font-size: 13px; cursor: pointer; transition: all .15s;
+  }
+  .chip.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+  .sublabel { font-size: 12px; color: var(--text2); margin: 8px 0 0; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 4px; gap: 10px; }
+  .row + .row { border-top: 1px dashed var(--border); }
+  .row .k { font-size: 13px; color: var(--text2); white-space: nowrap; }
+  .row .v { font-size: 15px; font-weight: 600; text-align: right; word-break: break-all; }
+  .row.hl .v { color: var(--primary); font-weight: 800; font-size: 16px; }
+  .row.hl .k { color: var(--primary); }
+  .err { font-size: 12px; color: var(--error); margin-top: 6px; }
+  .hint { font-size: 12px; color: var(--text2); line-height: 1.7; margin-top: 8px; }
+  .stage { display: flex; gap: 7px; align-items: center; margin-bottom: 8px; }
+  .stage input {
+    border: 1px solid var(--chipborder); border-radius: 10px; background: transparent; color: var(--text);
+    padding: 9px 10px; font-size: 14px; outline: none; min-width: 0; font-family: inherit;
+  }
+  .stage input:focus { border-color: var(--primary); }
+  .stage .nm { flex: 1.1; } .stage .db { flex: .9; }
+  .stage .del {
+    border: none; background: transparent; color: var(--text2); font-size: 17px; cursor: pointer; padding: 4px 6px;
+  }
+  .addbtn {
+    border: 1px dashed var(--chipborder); background: transparent; color: var(--primary);
+    border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .switchrow { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; font-size: 13px; }
+  .switch { position: relative; width: 44px; height: 24px; flex: none; cursor: pointer; }
+  .switch input { display: none; }
+  .switch .tr { position: absolute; inset: 0; border-radius: 999px; background: var(--chipborder); transition: .2s; }
+  .switch .th {
+    position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+  .switch input:checked + .tr { background: var(--primary); }
+  .switch input:checked ~ .th { left: 23px; }
+  .navbar {
+    display: flex; border-top: 1px solid var(--border); background: var(--card); padding: 6px 2px 10px;
+  }
+  .navitem {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    border: none; background: transparent; cursor: pointer; color: var(--text2); font-family: inherit;
+    padding: 4px 0; border-radius: 12px;
+  }
+  .navitem .pill { padding: 3px 11px; border-radius: 999px; }
+  .navitem.on { color: var(--primary); font-weight: 700; }
+  .navitem.on .pill { background: var(--primary-soft); }
+  .navitem span.lb { font-size: 10.5px; }
+  .navitem svg { width: 21px; height: 21px; }
+
+  /* ---- 手机小屏自适应:去掉机壳,全屏即 App ---- */
+  @media (max-width: 760px) {
+    body { padding: 0; display: block; }
+    .proto-header, .proto-notes { display: none; }
+    .phone {
+      width: 100%; height: 100dvh; min-height: 0; padding: 0;
+      border-radius: 0; box-shadow: none; background: var(--screen);
+    }
+    .screen-wrap { border-radius: 0; }
+    .statusbar { display: none; }
+    .appbar { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+  }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class="proto-header">
+      <h1>微波光子计算器 · 交互原型</h1>
+      <p>与安卓版同一套计算引擎,界面即最终效果的还原。请逐页试用,反馈需要改进的地方。</p>
+      <button id="themeBtn">切换 深色 / 浅色</button>
+    </div>
+    <div class="proto-notes">
+      <b>本次新增</b><br>
+      · 噪声页:光放大器 ASE 与 OSNR 计算<br>
+      · 阻抗页:Γ / VSWR / 回损 / 失配损耗,串并联等效变换<br>
+      · 工具页:波长间隔 ↔ 频率间隔(1 nm 对应多少 GHz)<br>
+      · 窄屏(手机)自动全屏自适应,浏览器窗口缩窄即可体验
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="screen-wrap">
+      <div class="statusbar"><span>12:30</span><span>5G ▮ 86%</span></div>
+      <div class="appbar">
+        <span class="title">微波光子计算器</span>
+        <button class="theme-mini" id="themeBtnMini">深/浅</button>
+      </div>
+      <div class="screen" id="screen"></div>
+      <nav class="navbar" id="nav"></nav>
+    </div>
+  </div>
+
+<script>
+/* ================= 计算引擎(与 Kotlin 版一致) ================= */
+const dbm2w = d => Math.pow(10, d / 10) / 1e3;
+const w2dbm = w => 10 * Math.log10(w * 1e3);
+const w2v = (w, z) => Math.sqrt(w * z);
+const v2w = (v, z) => v * v / z;
+const vr2pp = v => v * 2 * Math.SQRT2;
+const pp2vr = v => v / (2 * Math.SQRT2);
+const vr2dbv = v => 20 * Math.log10(v);
+const dbv2vr = d => Math.pow(10, d / 20);
+const vr2dbuv = v => vr2dbv(v) + 120;
+const dbuv2vr = d => dbv2vr(d - 120);
+const kB = 1.380649e-23, CC = 299792458, HP = 6.62607015e-34, QE = 1.602176634e-19;
+const hnuW = wl => HP * CC / wl;                      // 光子能量(W/Hz)
+const photonPsdDbmHz = wl => 10 * Math.log10(hnuW(wl) * 1e3);
+const asePsdW = (g, nf, wl) => Math.pow(10, nf / 10) * hnuW(wl) * (Math.pow(10, g / 10) - 1);
+const asePowerDbm = (g, nf, wl, bwHz) => 10 * Math.log10(asePsdW(g, nf, wl) * bwHz * 1e3);
+const dFreqHz = (wl, dwl) => CC * dwl / (wl * wl);    // Δλ → Δf
+const dWlM = (wl, df) => df * wl * wl / CC;           // Δf → Δλ
+function reflection(z0, zr, zx) {
+  const den = (zr + z0) ** 2 + zx * zx;
+  const gRe = ((zr - z0) * (zr + z0) + zx * zx) / den;
+  const gIm = (zx * (zr + z0) - (zr - z0) * zx) / den;
+  const m = Math.hypot(gRe, gIm);
+  return {
+    re: gRe, im: gIm, mag: m,
+    ph: Math.atan2(gIm, gRe) * 180 / Math.PI,
+    vswr: m < 1 ? (1 + m) / (1 - m) : NaN,
+    rl: m > 0 ? -20 * Math.log10(m) : Infinity,
+    ml: -10 * Math.log10(1 - m * m),
+    pct: m * m * 100,
+  };
+}
+const s2p = (rs, xs) => { const q = Math.abs(xs / rs); return [rs * (1 + q * q), xs * (1 + q * q) / q]; };
+
+const UNITS = [
+  { id: 'dBm' }, { id: 'dBW' }, { id: 'W' }, { id: 'mW' }, { id: 'μW' },
+  { id: 'Vrms' }, { id: 'Vpp' }, { id: 'dBV' }, { id: 'dBμV' },
+];
+const toW = (v, uid, z) => {
+  switch (uid) {
+    case 'dBm': return dbm2w(v);
+    case 'dBW': return dbm2w(v + 30);
+    case 'W': return v; case 'mW': return v / 1e3; case 'μW': return v / 1e6;
+    case 'Vrms': return v2w(v, z);
+    case 'Vpp': return v2w(pp2vr(v), z);
+    case 'dBV': return v2w(dbv2vr(v), z);
+    case 'dBμV': return v2w(dbuv2vr(v), z);
+  }
+};
+const fromW = (w, uid, z) => {
+  switch (uid) {
+    case 'dBm': return w2dbm(w);
+    case 'dBW': return w2dbm(w) - 30;
+    case 'W': return w; case 'mW': return w * 1e3; case 'μW': return w * 1e6;
+    case 'Vrms': return w2v(w, z);
+    case 'Vpp': return vr2pp(w2v(w, z));
+    case 'dBV': return vr2dbv(w2v(w, z));
+    case 'dBμV': return vr2dbuv(w2v(w, z));
+  }
+};
+const LOG_IDS = ['dBm', 'dBW', 'dBV', 'dBμV'];
+function fmtU(uid, v) {
+  if (!isFinite(v)) return '—';
+  return LOG_IDS.includes(uid) ? v.toFixed(3) : eng(v);
+}
+function eng(v, sig = 4) {
+  if (!isFinite(v)) return '—';
+  if (v === 0) return '0';
+  const P = { '-15': 'f', '-12': 'p', '-9': 'n', '-6': 'μ', '-3': 'm', '0': '', '3': 'k', '6': 'M', '9': 'G', '12': 'T' };
+  const e = Math.floor(Math.log10(Math.abs(v)));
+  let ee = Math.max(-15, Math.min(12, Math.floor(e / 3) * 3));
+  const m = v / Math.pow(10, ee);
+  const d = Math.max(0, Math.min(6, sig - 1 - Math.floor(Math.log10(Math.abs(m)))));
+  const s = m.toFixed(d).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return s + ' ' + (P[String(ee)] ?? '');
+}
+const num = s => { const t = String(s).trim(); if (!t) return null; const v = Number(t); return isFinite(v) ? v : null; };
+const fx = (v, d = 2) => isFinite(v) ? v.toFixed(d) : '—';
+
+/* ================= 状态 ================= */
+const S = {
+  tab: 'convert',
+  convert: { v: '0', u: 'dBm', zi: 0, zc: '50' },
+  chain: { v: '0', u: 'dBm', zi: 0, zc: '50', stages: [
+    { nm: '放大器', db: '+20' }, { nm: '光纤', db: '-3' } ] },
+  detect: { p: '0', pu: 'dBm', r: '0.85', z: '50' },
+  noise: { bw: '1', bwu: 'GHz', nf: '3', t: '290',
+           g: '20', anf: '5', wl: '1550', abw: '0.1', abwu: 'nm', ps: '10' },
+  imp: { z0: '50', zr: '75', zx: '0', rs: '1', xs: '1' },
+  mod: { vpi: '4', vpp: '2', pp: false },
+  tools: { m: 0, v: '1550', dm: 0, dwl: '1550', dv: '1' },
+};
+const ZO = [50, 75, 1], ZL = ['50 Ω', '75 Ω', '1 Ω', '自定义'];
+const zOf = p => p.zi === 3 ? (num(p.zc) > 0 ? num(p.zc) : 50) : ZO[p.zi];
+
+/* ================= 视图 ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function card(title, bodyHtml) {
+  return `<div class="card">${title ? `<h3>${title}</h3>` : ''}${bodyHtml}</div>`;
+}
+function numField(label, val, unit, onin) {
+  return `<div class="field"><label>${label}</label>
+    <div class="inputwrap"><input type="text" inputmode="decimal" value="${esc(val)}" oninput="${onin}(this.value)">
+    <span class="unit">${unit}</span></div></div>`;
+}
+function chips(items, sel, onclick) {
+  return `<div class="chips">${items.map((c, i) =>
+    `<button class="chip ${i === sel ? 'on' : ''}" onclick="${onclick}(${i})">${c}</button>`).join('')}</div>`;
+}
+function rows(list) {
+  return list.map(r => `<div class="row ${r.hl ? 'hl' : ''}"><span class="k">${r.k}</span><span class="v">${r.v}</span></div>`).join('');
+}
+const unitChipsHtml = (sel, fn) => chips(UNITS.map(u => u.id), sel, fn);
+
+/* ---- 换算 ---- */
+function renderConvert() {
+  const p = S.convert;
+  $('screen').innerHTML =
+    card('输入电平',
+      numField('数值', p.v, p.u, 'cv') +
+      unitChipsHtml(UNITS.findIndex(u => u.id === p.u), 'cu') +
+      `<p class="sublabel">系统阻抗 Z(电压 ↔ 功率换算依赖)</p>` +
+      chips(ZL, p.zi, 'cz') +
+      (p.zi === 3 ? numField('自定义阻抗', p.zc, 'Ω', 'czz') : '')) +
+    `<div id="cres"></div><div id="cquick"></div>`;
+  recalcConvert();
+}
+function recalcConvert() {
+  const p = S.convert, z = zOf(p);
+  const v = num(p.v);
+  $('cres').innerHTML = v === null
+    ? card('全部单位', `<div class="err">请输入有效数值(支持负号与科学计数,如 1e-3)</div>`)
+    : card('全部单位', rows(UNITS.map(u => ({
+        k: u.id, v: fmtU(u.id, fromW(toW(v, p.u, z), u.id, z)), hl: u.id === p.u }))));
+  const v0 = w2v(1e-3, z);
+  $('cquick').innerHTML = card(`速查(当前阻抗 ${fx(z, z % 1 ? 1 : 0)} Ω)`, rows([
+    { k: '0 dBm', v: '1 mW' },
+    { k: '0 dBm 电压', v: `${eng(v0)} Vrms ≈ ${eng(vr2pp(v0))} Vpp` },
+    { k: '0 dBm 电平', v: `${fx(vr2dbuv(v0), 2)} dBμV` },
+    { k: '10 dBm 电压', v: `${eng(vr2pp(w2v(1e-2, z)))} Vpp` },
+  ]));
+}
+window.cv = x => { S.convert.v = x; recalcConvert(); };
+window.cu = i => { S.convert.u = UNITS[i].id; renderConvert(); };
+window.cz = i => { S.convert.zi = i; renderConvert(); };
+window.czz = x => { S.convert.zc = x; recalcConvert(); };
+
+/* ---- 链路 ---- */
+function renderChain() {
+  const p = S.chain;
+  const stageHtml = p.stages.map((s, i) =>
+    `<div class="stage">
+      <input class="nm" placeholder="名称" value="${esc(s.nm)}" oninput="chN(${i},this.value)">
+      <input class="db" placeholder="dB" value="${esc(s.db)}" oninput="chG(${i},this.value)">
+      <button class="del" onclick="chDel(${i})" title="删除该级">✕</button>
+    </div>`).join('');
+  $('screen').innerHTML =
+    card('输入电平',
+      numField('数值', p.v, p.u, 'cnv') +
+      chips(['dBm', 'Vrms', 'Vpp'], ['dBm', 'Vrms', 'Vpp'].indexOf(p.u), 'cnu') +
+      `<p class="sublabel">系统阻抗 Z</p>` + chips(ZL, p.zi, 'cnz') +
+      (p.zi === 3 ? numField('自定义阻抗', p.zc, 'Ω', 'cnzz') : '')) +
+    card('级联(增益 +,衰减 −)',
+      `<div id="stages">${stageHtml}</div>
+       <button class="addbtn" onclick="chAdd()">+ 添加一级</button>
+       <div id="chsum" style="margin-top:8px"></div>`) +
+    `<div id="chout"></div>`;
+  recalcChain();
+}
+function recalcChain() {
+  const p = S.chain, z = zOf(p);
+  const stages = p.stages.map(s => ({ nm: s.nm || '级', g: num(s.db) })).filter(s => s.g !== null);
+  const total = stages.reduce((a, s) => a + s.g, 0);
+  const inV = num(p.v) ?? 0;
+  const inDbm = w2dbm(toW(inV, p.u, z));
+  const outDbm = inDbm + total;
+  $('chsum').innerHTML = rows([
+    { k: '总增益', v: `${fx(total)} dB`, hl: true },
+    { k: '输入 → 输出(dBm)', v: `${fx(inDbm)} → ${fx(outDbm)}` },
+  ]);
+  $('chout').innerHTML = card('输出电平(全部单位)',
+    rows(UNITS.map(u => ({ k: u.id, v: fmtU(u.id, fromW(dbm2w(outDbm), u.id, z)) }))));
+}
+window.cnv = x => { S.chain.v = x; recalcChain(); };
+window.cnu = i => { S.chain.u = ['dBm', 'Vrms', 'Vpp'][i]; renderChain(); };
+window.cnz = i => { S.chain.zi = i; renderChain(); };
+window.cnzz = x => { S.chain.zc = x; recalcChain(); };
+window.chN = (i, v) => { S.chain.stages[i].nm = v; };
+window.chG = (i, v) => { S.chain.stages[i].db = v; recalcChain(); };
+window.chDel = i => { S.chain.stages.splice(i, 1); renderChain(); };
+window.chAdd = () => { S.chain.stages.push({ nm: '', db: '0' }); renderChain(); };
+
+/* ---- 探测 ---- */
+function renderDetect() {
+  const p = S.detect;
+  $('screen').innerHTML =
+    card('输入',
+      numField('平均光功率', p.p, p.pu, 'dp') +
+      chips(['dBm', 'mW'], p.pu === 'dBm' ? 0 : 1, 'dpu') +
+      numField('探测器响应度 R', p.r, 'A/W', 'dr') +
+      numField('负载(或跨阻)阻抗', p.z, 'Ω', 'dz')) +
+    `<div id="dout"></div>`;
+  recalcDetect();
+}
+function recalcDetect() {
+  const p = S.detect;
+  const pw = num(p.p) === null ? null : (p.pu === 'dBm' ? dbm2w(num(p.p)) : num(p.p) / 1e3);
+  const r = num(p.r), z = num(p.z);
+  let out;
+  if (pw === null || r === null || z === null || z <= 0) {
+    out = card('输出(直流 / 平均值)', `<div class="err">请检查输入是否有效</div>`);
+  } else {
+    const iA = r * pw;
+    out = card('输出(直流 / 平均值)', rows([
+      { k: '光电流 I = R·P', v: `${eng(iA)} A`, hl: true },
+      { k: '负载电压 V = I·Z', v: `${eng(iA * z)} V` },
+      { k: '负载耗散 P = I²·Z', v: `${eng(iA * iA * z)} W` },
+    ]));
+  }
+  $('dout').innerHTML = out + `<div class="hint">说明:以上为平均光功率对应的直流(或低频)量;交流小信号输出请回到链路页,按链路增益折算。</div>`;
+}
+window.dp = x => { S.detect.p = x; recalcDetect(); };
+window.dpu = i => { S.detect.pu = i === 0 ? 'dBm' : 'mW'; renderDetect(); };
+window.dr = x => { S.detect.r = x; recalcDetect(); };
+window.dz = x => { S.detect.z = x; recalcDetect(); };
+
+/* ---- 噪声(热噪 + ASE) ---- */
+const BWU = ['Hz', 'kHz', 'MHz', 'GHz'], BWM = [1, 1e3, 1e6, 1e9];
+function renderNoise() {
+  const p = S.noise;
+  $('screen').innerHTML =
+    card('电域热噪底(kTB + NF)',
+      numField('噪声带宽 B', p.bw, p.bwu, 'nb') +
+      chips(BWU, BWU.indexOf(p.bwu), 'nbu') +
+      numField('噪声系数 NF', p.nf, 'dB', 'nn') +
+      numField('等效噪声温度 T(一般保持 290)', p.t, 'K', 'nt') +
+      `<div id="nout"></div>
+       <div class="hint">−174 dBm/Hz 对应 290 K 热噪声;若系统含光放大器,ASE 噪声见下方。</div>`) +
+    card('光放大器 ASE 与 OSNR',
+      numField('放大器增益 G', p.g, 'dB', 'ng') +
+      numField('放大器噪声系数 NF', p.anf, 'dB', 'nanf') +
+      numField('中心波长', p.wl, 'nm', 'nwl') +
+      numField('积分带宽 B', p.abw, p.abwu, 'nabw') +
+      chips(['带宽用 nm', '带宽用 GHz'], p.abwu === 'nm' ? 0 : 1, 'nabu') +
+      numField('信号输出功率(用于 OSNR)', p.ps, 'dBm', 'nps') +
+      `<div id="aout"></div>
+       <div class="hint">计算:P_ASE = NF·hν·(G−1)·B(两偏振);经验速算 @1550 nm、0.1 nm:ASE(dBm) ≈ G + NF − 58。OSNR = P_sig − P_ASE(同带宽)。</div>`);
+  recalcNoise();
+}
+function recalcNoise() {
+  const p = S.noise;
+  const bw = num(p.bw) > 0 ? num(p.bw) * BWM[BWU.indexOf(p.bwu)] : null;
+  const nf = num(p.nf), t = num(p.t) > 0 ? num(p.t) : null;
+  $('nout').innerHTML = (bw === null || nf === null || t === null)
+    ? `<div class="err">请检查输入是否有效</div>`
+    : rows((() => {
+        const kt = 10 * Math.log10(kB * t * 1e3);
+        const floor = kt + nf + 10 * Math.log10(bw);
+        return [
+          { k: '热噪声谱密度 kT', v: `${fx(kt)} dBm/Hz` },
+          { k: '积分噪声底', v: `${fx(floor)} dBm`, hl: true },
+          { k: '换算 dBW', v: `${fx(floor - 30)} dBW` },
+          { k: '50 Ω 等效电压', v: `${eng(w2v(dbm2w(floor), 50))} Vrms` },
+        ];
+      })());
+  const wl = num(p.wl) > 0 ? num(p.wl) * 1e-9 : null;
+  const g = num(p.g), anf = num(p.anf), ps = num(p.ps);
+  const abwHz = num(p.abw) > 0
+    ? (p.abwu === 'nm' ? (wl === null ? null : dFreqHz(wl, num(p.abw) * 1e-9)) : num(p.abw) * 1e9)
+    : null;
+  $('aout').innerHTML = (wl === null || g === null || anf === null || abwHz === null || ps === null)
+    ? `<div class="err">请检查输入是否有效</div>`
+    : rows((() => {
+        const aDbm = asePowerDbm(g, anf, wl, abwHz);
+        return [
+          { k: '光子谱密度基准 hν', v: `${fx(photonPsdDbmHz(wl))} dBm/Hz` },
+          { k: 'ASE 谱密度', v: `${fx(aDbm - 10 * Math.log10(abwHz))} dBm/Hz` },
+          { k: 'ASE 总功率(@B)', v: `${fx(aDbm)} dBm`, hl: true },
+          { k: 'OSNR(@B)', v: `${fx(ps - aDbm)} dB` },
+        ];
+      })());
+}
+window.nb = x => { S.noise.bw = x; recalcNoise(); };
+window.nbu = i => { S.noise.bwu = BWU[i]; renderNoise(); };
+window.nn = x => { S.noise.nf = x; recalcNoise(); };
+window.nt = x => { S.noise.t = x; recalcNoise(); };
+window.ng = x => { S.noise.g = x; recalcNoise(); };
+window.nanf = x => { S.noise.anf = x; recalcNoise(); };
+window.nwl = x => { S.noise.wl = x; recalcNoise(); };
+window.nabw = x => { S.noise.abw = x; recalcNoise(); };
+window.nabu = i => { S.noise.abwu = i === 0 ? 'nm' : 'GHz'; renderNoise(); };
+window.nps = x => { S.noise.ps = x; recalcNoise(); };
+
+/* ---- 阻抗 ---- */
+function renderImp() {
+  const p = S.imp;
+  $('screen').innerHTML =
+    card('反射系数 / 驻波 / 回波损耗',
+      numField('系统阻抗 Z₀', p.z0, 'Ω', 'iz0') +
+      numField('负载 ZL 实部', p.zr, 'Ω', 'izr') +
+      numField('负载 ZL 虚部(感性 +,容性 −)', p.zx, 'Ω', 'izx') +
+      `<div id="iout1"></div>
+       <div class="hint">Γ = (ZL − Z₀)/(ZL + Z₀);共轭匹配条件 ZL = Z₀*。VSWR = 1.5 对应回损约 14 dB。</div>`) +
+    card('串联 ↔ 并联等效变换',
+      numField('串联电阻 Rs', p.rs, 'Ω', 'irs') +
+      numField('串联电抗 Xs(感性 +,容性 −)', p.xs, 'Ω', 'ixs') +
+      `<div id="iout2"></div>
+       <div class="hint">Q = |Xs/Rs|;Rp = Rs(1+Q²),Xp = Xs(1+Q²)/Q,与 Xs 同号。L 型匹配网络即基于此变换。</div>`);
+  recalcImp();
+}
+function recalcImp() {
+  const p = S.imp;
+  const z0 = num(p.z0) > 0 ? num(p.z0) : null, zr = num(p.zr), zx = num(p.zx);
+  $('iout1').innerHTML = (z0 === null || zr === null || zx === null)
+    ? `<div class="err">请检查输入是否有效</div>`
+    : rows((() => {
+        const r = reflection(z0, zr, zx);
+        return [
+          { k: '反射系数 Γ', v: `${r.mag.toFixed(4)} ∠ ${r.ph.toFixed(1)}°` },
+          { k: '驻波比 VSWR', v: isFinite(r.vswr) ? r.vswr.toFixed(3) : '—', hl: true },
+          { k: '回波损耗 RL', v: `${fx(r.rl)} dB` },
+          { k: '失配损耗 ML', v: `${fx(r.ml, 3)} dB` },
+          { k: '反射功率占比', v: `${fx(r.pct)} %` },
+        ];
+      })());
+  const rs = num(p.rs), xs = num(p.xs);
+  $('iout2').innerHTML = (rs === null || xs === null || rs === 0 || xs === 0)
+    ? `<div class="err">需要 Rs ≠ 0 且 Xs ≠ 0</div>`
+    : rows((() => {
+        const q = Math.abs(xs / rs), [rp, xp] = s2p(rs, xs);
+        return [
+          { k: '品质因数 Q', v: q.toFixed(3) },
+          { k: '等效并联 Rp', v: `${eng(rp)} Ω`, hl: true },
+          { k: '等效并联 Xp', v: `${eng(xp)} Ω` },
+        ];
+      })());
+}
+window.iz0 = x => { S.imp.z0 = x; recalcImp(); };
+window.izr = x => { S.imp.zr = x; recalcImp(); };
+window.izx = x => { S.imp.zx = x; recalcImp(); };
+window.irs = x => { S.imp.rs = x; recalcImp(); };
+window.ixs = x => { S.imp.xs = x; recalcImp(); };
+
+/* ---- 调制 ---- */
+function renderMod() {
+  const p = S.mod;
+  $('screen').innerHTML =
+    card('马赫-曾德尔调制器(MZM)',
+      numField(p.pp ? '推挽差分半波电压 Vπ' : '单臂半波电压 Vπ', p.vpi, 'V', 'mv') +
+      numField('正弦驱动 Vpp', p.vpp, 'V', 'mp') +
+      `<div class="switchrow"><span>推挽(差分)驱动,等效 Vπ 减半</span>
+        <label class="switch"><input type="checkbox" ${p.pp ? 'checked' : ''} onchange="mtoggle(this.checked)"><span class="tr"></span><span class="th"></span></label>
+      </div>`) +
+    `<div id="mout"></div>`;
+  recalcMod();
+}
+function recalcMod() {
+  const p = S.mod;
+  const vpi = num(p.vpi) > 0 ? num(p.vpi) : null, vpp = num(p.vpp) >= 0 ? num(p.vpp) : null;
+  let out;
+  if (vpi === null || vpp === null) {
+    out = card('结果(正交偏置点)', `<div class="err">请检查输入是否有效</div>`);
+  } else {
+    const vpiE = p.pp ? vpi / 2 : vpi;
+    const m = Math.PI * (vpp / 2) / vpiE;
+    const ph = Math.PI * vpp / vpiE;
+    out = card('结果(正交偏置点)', rows([
+      { k: '有效半波电压', v: `${eng(vpiE)} V` },
+      { k: '正交点偏置电压', v: `${fx(vpiE / 2, 3)} V` },
+      { k: '小信号调制深度 m', v: `${fx(m, 3)}(${fx(m * 100, 1)} %)`, hl: true },
+      { k: '相位摆幅(峰峰)', v: `${fx(ph, 3)} rad = ${fx(ph * 180 / Math.PI, 1)}°` },
+      { k: '100% 调制所需 Vpp', v: `${eng(2 * vpiE / Math.PI)} V` },
+    ]));
+  }
+  $('mout').innerHTML = out + `<div class="hint">约定:m = π·Vpk/Vπ(正交偏置线性近似);推挽驱动以差分电压为参考,等效半波电压减半。m > 0.3 时非线性失真逐渐显著,模拟链路通常取 m ≤ 0.3。</div>`;
+}
+window.mv = x => { S.mod.vpi = x; recalcMod(); };
+window.mp = x => { S.mod.vpp = x; recalcMod(); };
+window.mtoggle = b => { S.mod.pp = b; renderMod(); };
+
+/* ---- 工具 ---- */
+function renderTools() {
+  const p = S.tools;
+  $('screen').innerHTML =
+    card('光波长 ↔ 频率 ↔ 光子能量(真空)',
+      chips(['波长 nm → 频率', '频率 THz → 波长'], p.m, 'tm') +
+      numField(p.m === 0 ? '真空波长' : '光频率', p.v, p.m === 0 ? 'nm' : 'THz', 'tv') +
+      `<div id="tout"></div>
+       <div class="hint">c = 299 792 458 m/s(真空);E = hc/λ。</div>`) +
+    card('波长间隔 ↔ 频率间隔(小量近似)',
+      chips(['Δλ nm → Δf', 'Δf GHz → Δλ'], p.dm, 'tdm') +
+      numField('中心波长 λ₀', p.dwl, 'nm', 'tdwl') +
+      numField('波长 / 频率间隔', p.dv, p.dm === 0 ? 'nm' : 'GHz', 'tdv') +
+      `<div id="dtout"></div>
+       <div class="hint">Δf = c·Δλ/λ²。1550 nm 处 1 nm ≈ 124.8 GHz,1310 nm 处 ≈ 174.7 GHz,滤波器/信道间隔换算常用。</div>`) +
+    card('工程速查', rows([
+      { k: '0 dBm', v: '1 mW = −30 dBW' },
+      { k: '0 dBm @ 50 Ω', v: '224 mVrms ≈ 632 mVpp' },
+      { k: '10 dBm @ 50 Ω', v: '707 mVrms = 2 Vpp' },
+      { k: '0 dBm @ 50 Ω 电平', v: '+107 dBμV' },
+      { k: '热噪底 @ 290 K', v: '−174 dBm/Hz' },
+      { k: '噪底 @ 1 GHz、NF = 0 dB', v: '−84 dBm' },
+      { k: '1550 nm', v: '≈ 193.4 THz,0.80 eV' },
+      { k: '1550 nm 处 1 nm', v: '≈ 124.8 GHz' },
+      { k: '1310 nm 处 1 nm', v: '≈ 174.7 GHz' },
+      { k: '常用 PD 响应度(1550 nm)', v: '0.8 ~ 0.9 A/W' },
+    ]));
+  recalcTools();
+}
+function recalcTools() {
+  const p = S.tools;
+  const wl = p.m === 0 ? (num(p.v) > 0 ? num(p.v) * 1e-9 : null)
+    : (num(p.v) > 0 ? CC / (num(p.v) * 1e12) : null);
+  $('tout').innerHTML = wl === null
+    ? `<div class="err">请输入正数</div>`
+    : rows([
+        { k: '频率', v: `${(CC / wl / 1e12).toFixed(4)} THz` },
+        { k: '波长', v: `${(wl * 1e9).toFixed(4)} nm` },
+        { k: '光子能量', v: `${(HP * CC / wl / QE).toFixed(3)} eV` },
+      ]);
+  const dwl = num(p.dwl) > 0 ? num(p.dwl) * 1e-9 : null;
+  const dv = num(p.dv);
+  let dr = null;
+  if (dwl !== null && dv !== null && dv > 0) {
+    dr = p.dm === 0 ? dFreqHz(dwl, dv * 1e-9) / 1e9 : dWlM(dwl, dv * 1e9) * 1e9;
+  }
+  $('dtout').innerHTML = dr === null
+    ? `<div class="err">请检查输入(需正数)</div>`
+    : rows([
+        p.dm === 0
+          ? { k: '频率间隔 Δf', v: `${dr.toFixed(3)} GHz`, hl: true }
+          : { k: '波长间隔 Δλ', v: `${dr.toFixed(4)} nm`, hl: true },
+      ]);
+}
+window.tm = i => { S.tools.m = i; renderTools(); };
+window.tv = x => { S.tools.v = x; recalcTools(); };
+window.tdm = i => { S.tools.dm = i; renderTools(); };
+window.tdwl = x => { S.tools.dwl = x; recalcTools(); };
+window.tdv = x => { S.tools.dv = x; recalcTools(); };
+
+/* ================= 导航 ================= */
+const ICONS = {
+  convert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13M13 3l4 4-4 4"/><path d="M20 17H7M11 21l-4-4 4-4"/></svg>',
+  chain: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4-8 4 5 4-10 5 13"/></svg>',
+  detect: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 5a7 7 0 0 1 7 7M12 8.5A3.5 3.5 0 0 1 15.5 12"/><path d="M12 1.5A10.5 10.5 0 0 1 22.5 12"/></svg>',
+  noise: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>',
+  imp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><path d="M5 5l2.5 2.5M16.5 16.5L19 19M19 5l-2.5 2.5M7.5 16.5L5 19"/></svg>',
+  mod: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2.5-7 5-7 7.5 0s5 7 7.5 0 3-5 5 0"/></svg>',
+  tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18h5M4 6h9M13 6L8.5 18"/><path d="M14 12c1.5 0 2.5 1 2.5 3s1 3 3.5 3"/><circle cx="20.5" cy="8.5" r="1.2"/></svg>',
+};
+const TABS = [
+  { id: 'convert', lb: '换算', r: renderConvert },
+  { id: 'chain', lb: '链路', r: renderChain },
+  { id: 'detect', lb: '探测', r: renderDetect },
+  { id: 'noise', lb: '噪声', r: renderNoise },
+  { id: 'imp', lb: '阻抗', r: renderImp },
+  { id: 'mod', lb: '调制', r: renderMod },
+  { id: 'tools', lb: '工具', r: renderTools },
+];
+$('nav').innerHTML = TABS.map(t =>
+  `<button class="navitem" id="nav-${t.id}" onclick="go('${t.id}')">
+     <span class="pill">${ICONS[t.id]}</span><span class="lb">${t.lb}</span></button>`).join('');
+function go(id) {
+  S.tab = id;
+  TABS.forEach(t => $('nav-' + t.id).classList.toggle('on', t.id === id));
+  TABS.find(t => t.id === id).r();
+  $('screen').scrollTop = 0;
+}
+go('convert');
+const toggleTheme = () => document.body.classList.toggle('dark');
+$('themeBtn').onclick = toggleTheme;
+$('themeBtnMini').onclick = toggleTheme;
+</script>
+</body>
+</html>
